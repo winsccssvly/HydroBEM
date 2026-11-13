@@ -1,0 +1,71 @@
+# Build the Rust engine and the Python extension module on Windows (pure Rust) and
+# run the Rust lints (rustfmt, clippy), the Rust tests, the Python test suite (on the package with the module built in place) and ruff. Pushes and pull requests run the
+# suite without the tests marked slow; a version tag (v*) and a manual run (Actions, "Run
+# workflow") run every test and also build the wheel (scripts/build_wheel.py), install it and run
+# the tests on it.
+# Changes of the documentation alone start no run (but for docs/reference/results.md,
+# whose generated table the tests check), and a newer run of the same ref cancels the older one.
+name: ci
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+    paths: ["**", "!docs/**", "!**.md", "docs/reference/results.md"]
+  pull_request:
+    paths: ["**", "!docs/**", "!**.md", "docs/reference/results.md"]
+  workflow_dispatch:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-2022
+    env:
+      FULL: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Rust
+        shell: pwsh
+        # the toolchain of rust-toolchain.toml, with its rustfmt and clippy
+        run: |
+          rustup toolchain install
+          rustc --version
+      # the cargo registry and the compiled dependencies, keyed by Cargo.lock and the toolchain
+      - uses: Swatinem/rust-cache@v2
+      - name: Dependencies
+        shell: pwsh
+        run: |
+          python -m pip install numpy scipy mpmath pytest ruff "maturin>=1.9,<2"
+          $prefix = python -c "import sys; print(sys.prefix)"
+          "HB_PYTHON_ENV=$prefix" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Lint
+        shell: cmd
+        run: |
+          cargo fmt --all -- --check || exit /b 1
+          cargo clippy --workspace --all-targets --release -- -D warnings || exit /b 1
+      - name: Build
+        shell: cmd
+        run: scripts\build.bat Release
+      - name: Test
+        shell: cmd
+        env:
+          MODE: ${{ env.FULL == 'true' && 'full' || 'fast' }}
+        run: scripts\test.bat %MODE%
+      - name: Wheel
+        if: env.FULL == 'true'
+        shell: pwsh
+        run: |
+          python scripts/build_wheel.py --out dist
+          python -m pip install --no-deps (Get-ChildItem dist\*.whl).FullName
+          Push-Location $env:RUNNER_TEMP
+          python -c "import hydrobem as hb; print(hb.__file__); print(hb.build_info())"
+          Pop-Location
+          # the tests on the installed wheel (the package of the checkout out of the path)
+          $env:HYDROBEM_TEST_INSTALLED = "1"
+          Rename-Item python\hydrobem hydrobem.checkout
+          python -m pytest tests/python -m "not slow" -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Rename-Item python\hydrobem.checkout hydrobem

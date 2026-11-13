@@ -1,0 +1,18 @@
+[package]
+name = "hydrobem-c"
+version = "0.3.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+description = "HydroBEM: the C ABI of the engine (hydrobem.dll and include/hydrobem.h) over its public Rust API"
+publish = false
+
+[lib]
+# hydrobem.dll with its import library hydrobem.dll.lib; the rlib for the Rust tests of the ABI
+name = "hydrobem"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+hydrobem_core = { path = "../hydrobem" }

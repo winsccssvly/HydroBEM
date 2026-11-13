@@ -1,0 +1,6 @@
+# A. Hulme (1982), J. Fluid Mech. 121, 443-463: the added masses A(0) (heave) and A(1) (surge) / m0
+# at Ka = 0 and Ka = inf (extracted by scripts/extract_hulme.py): heave L of eq. (3.18) and the row inf
+# of table 1; surge the row 0 of table 2 (eq. 4.21) and C1 of eq. (5.15)
+# Ka A0 A1
+0 0.830951 0.5
+inf 0.5 0.273239

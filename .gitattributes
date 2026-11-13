@@ -1,0 +1,19 @@
+# Line endings: LF in the repository; Windows command scripts keep CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Generated tables and reference data (regenerate with scripts/, do not edit)
+crates/hydrobem/src/tables/green_*_tables.rs linguist-generated=true -diff
+crates/hydrobem/src/tables/log_gauss_table.rs linguist-generated=true
+crates/hydrobem-c/include/hydrobem.h linguist-generated=true
+python/hydrobem/_classes.py linguist-generated=true
+licenses/rust-crates.txt linguist-generated=true
+tests/data/*.txt linguist-generated=true
+docs/generated/*.md linguist-generated=true
+
+# Regression baselines (regenerate with scripts/gen_regression_baselines.py)
+tests/data/regression/*.npz binary
+
+# shell scripts keep LF
+*.sh text eol=lf

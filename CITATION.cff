@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use HydroBEM in your work, please cite it as below."
+type: software
+title: "HydroBEM"
+abstract: >-
+  A frequency-domain panel method (boundary element method) for the linear and second-order
+  wave loads on floating and fixed bodies, with a Python package and a C ABI.
+authors:
+  - family-names: "Lee"
+    given-names: "Sanghun"
+    orcid: "https://orcid.org/0009-0005-9883-4189"
+version: "0.3.0"
+license: Apache-2.0
+repository-code: "https://github.com/winsccssvly/HydroBEM"
+keywords:
+  - boundary element method
+  - panel method
+  - potential flow
+  - water waves
+  - hydrodynamics
+  - wave loads

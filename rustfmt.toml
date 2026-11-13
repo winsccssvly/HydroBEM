@@ -1,0 +1,4 @@
+# The dense numeric code of the engine reads best on wide lines with the short forms of
+# small expressions kept on one line.
+max_width = 120
+use_small_heuristics = "Max"

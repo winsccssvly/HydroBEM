@@ -1,0 +1,24 @@
+[package]
+name = "hydrobem-python"
+version = "0.3.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+description = "HydroBEM: the Python extension module hydrobem._core (PyO3) over the engine's public Rust API"
+publish = false
+
+[lib]
+# the extension module hydrobem._core, built by maturin (pyproject.toml)
+name = "_core"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+# no Rust tests: the module is tested from Python (tests/python)
+test = false
+doctest = false
+
+[dependencies]
+hydrobem_core = { path = "../hydrobem" }
+num-complex = { version = "0.4.6", default-features = false, features = ["std"] }
+numpy = "0.29.0"
+# the stable ABI of Python 3.11 and later: one module for every such Python
+pyo3 = { version = "0.29.3", features = ["abi3-py311"] }

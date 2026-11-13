@@ -1,0 +1,11 @@
+[workspace]
+resolver = "3"
+members = ["crates/hydrobem", "crates/hydrobem-python", "crates/hydrobem-c"]
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+debug = "line-tables-only"
+
+[profile.dev]
+opt-level = 1

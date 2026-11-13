@@ -1,0 +1,6 @@
+# AVX2 and FMA, the instruction set the engine requires. The C runtime is linked
+# dynamically: the extension module uses the vcruntime140.dll that Python installs instead of
+# carrying the runtime in the binary. No floating-point contraction is enabled.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+avx2,+fma"]
+

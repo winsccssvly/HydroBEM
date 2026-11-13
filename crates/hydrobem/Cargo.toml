@@ -1,0 +1,47 @@
+[package]
+name = "hydrobem_core"
+version = "0.3.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+description = "HydroBEM engine: a frequency-domain panel method (BEM) with a safe Rust API"
+publish = false
+build = "build.rs"
+autotests = false
+autobenches = false
+autoexamples = false
+
+[lib]
+name = "hydrobem_core"
+path = "src/lib.rs"
+# the engine library: the Python extension module (crates/hydrobem-python) and the Rust tests link it
+crate-type = ["rlib"]
+
+[dependencies]
+num-complex = { version = "0.4.6", default-features = false, features = ["std"] }
+rayon = "1.12.0"
+# the linear algebra (linalg.rs, pure Rust); the version is pinned: the factors (and so the results)
+# depend on faer's kernels, and linalg::version names it
+faer = { version = "=0.24.4", default-features = false, features = ["std", "rayon"] }
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+# the cache sizes of the memory estimate (linalg::thread_workspace_bytes); already a
+# dependency of faer's x86 kernels
+raw-cpuid = { version = "11.6.0", default-features = false }
+
+[[test]]
+name = "core"
+path = "tests/core.rs"
+
+[[test]]
+name = "model_api"
+path = "tests/model_api.rs"
+
+[[test]]
+name = "pools"
+path = "tests/pools.rs"
+
+# the error maps of the Green functions for the validation report (validation/kernels.py)
+[[example]]
+name = "green_error_map"
+path = "examples/green_error_map.rs"

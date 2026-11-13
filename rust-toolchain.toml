@@ -1,0 +1,8 @@
+# The toolchain the project is built, formatted and linted with, here and in CI (rustup installs it
+# on first use): a new Rust release changes what rustfmt and clippy accept, so it is taken up
+# deliberately, by changing this version. The crates themselves need Rust 1.85 or later.
+[toolchain]
+channel = "1.100.0"
+components = ["rustfmt", "clippy"]
+targets = ["x86_64-pc-windows-msvc"]
+profile = "minimal"

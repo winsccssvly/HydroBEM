@@ -1,0 +1,19 @@
+# Python environment for HydroBEM development:
+#   conda env create -f environment.yml
+# The package is installed in editable mode (maturin builds the extension module
+# hydrobem._core with cargo); scripts\build.bat rebuilds it in place after a change.
+name: hydrobem-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy>=1.26
+  - scipy
+  - mpmath
+  - pytest
+  - ruff
+  - matplotlib  # the figures of the validation report (validation/), not a dependency of the package
+  - maturin>=1.9,<2
+  - pip
+  - pip:
+      - -e .

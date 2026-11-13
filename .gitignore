@@ -1,0 +1,25 @@
+# the extension module built into the package in place (maturin develop, scripts/build.*)
+python/hydrobem/_core*.pyd
+python/hydrobem/_core*.so
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+# the local setup (never committed)
+CLAUDE.local.md
+# the outputs the examples make
+examples/*/out/
+# editor settings (local)
+.vscode/
+
+# the Rust build (cargo)
+/target/
+# the settings and agent worktrees of the development sessions (local)
+.claude/
+# wheels (scripts/build_wheel.py)
+dist/
+# build artifacts of a compiler run outside cargo
+*.obj
+*.exe
+*.lib

@@ -1,0 +1,8 @@
+# M.-H. Kim and D. K. P. Yue (1990), J. Fluid Mech. 211, 557-593, table 3, semi-analytic
+# (extracted by scripts/extract_kim_yue.py): bottom-mounted vertical cylinder, h/a = 1;
+# |f_p| / (rho g a A_j A_l) of the second-order potential force
+# kind nu_j_a nu_l_a value
+difference 1.0 2.0 1.936
+difference 1.4 1.6 0.435
+sum 1.0 2.0 2.656
+sum 1.4 1.6 2.875

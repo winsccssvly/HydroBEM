@@ -1,0 +1,23 @@
+HydroBEM
+Copyright 2026 Sanghun Lee
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+Unless a file states otherwise, every file of this repository, including the
+generated tables (crates/hydrobem/src/tables/) and the test data (tests/data/), is
+covered by that licence. The published values reproduced with their citation in
+tests/data/hulme1982_full.txt (A. Hulme (1982),
+J. Fluid Mech. 121, 443-463, tables 1 and 2) and in tests/data/kim_yue1990.txt
+(M.-H. Kim, D. K. P. Yue (1990), J. Fluid Mech. 211, 557-593, table 3) are
+third-party data, those of their authors: they are not covered by the Apache
+License of this project.
+
+Much of the source code and documentation of HydroBEM was written with the help
+of AI coding assistants, under the direction of the author, who decided what was
+built, which methods and sources it rests on and how it is verified. The
+copyright notice above applies to the extent that the work is protected by
+copyright.
+
+Binary distributions contain the Rust crates the engine and its Python
+extension module are compiled with (faer, rayon, num-complex, PyO3 and their
+dependencies); their licences are listed in THIRD_PARTY_NOTICES.md and
+licenses/rust-crates.txt and must accompany such distributions.

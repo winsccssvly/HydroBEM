@@ -1,0 +1,61 @@
+# `pip install .` builds the extension module hydrobem._core (crates/hydrobem-python, PyO3, with
+# the engine, pure Rust) with cargo and packs it with the Python package
+# (python/hydrobem); `maturin develop --release` builds it into the package in place.
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
+[project]
+name = "hydrobem"
+version = "0.3.0"
+description = "Frequency-domain panel-method (BEM) hydrodynamics"
+requires-python = ">=3.11"
+# the engine and the Rust crates compiled into the module (licenses/rust-crates.txt; faer with
+# the code it derives from Eigen, LAPACK and SuiteSparse; crossbeam-channel with code derived from
+# Go's select (BSD-3-Clause) and from matching.go (CC-BY-3.0); libm with code derived from musl)
+license = "Apache-2.0 AND MIT AND BSD-2-Clause AND BSD-3-Clause AND MPL-2.0 AND CC-BY-3.0"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md", "licenses/*.txt"]
+authors = [{ name = "Sanghun Lee" }]
+readme = "README.md"
+dependencies = ["numpy>=1.26"]
+
+[project.optional-dependencies]
+# the scripts of examples/ that use Bessel functions (pip install hydrobem[examples])
+examples = ["scipy"]
+
+[project.urls]
+Repository = "https://github.com/winsccssvly/HydroBEM"
+Issues = "https://github.com/winsccssvly/HydroBEM/issues"
+Changelog = "https://github.com/winsccssvly/HydroBEM/blob/main/CHANGELOG.md"
+
+[tool.maturin]
+manifest-path = "crates/hydrobem-python/Cargo.toml"
+python-source = "python"
+module-name = "hydrobem._core"
+profile = "release"
+
+# no SBOM of the Rust crates in the wheel: it names the absolute paths of the workspace crates on the
+# building machine; the crates and their licences are in licenses/rust-crates.txt
+[tool.maturin.sbom]
+rust = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+addopts = "--strict-markers"
+markers = [
+    "slow: published references and long identity checks (seconds to minutes); deselect with -m \"not slow\"",
+]
+# a warning of the engine fails a test unless the test expects it (pytest.warns)
+filterwarnings = ["error::hydrobem.errors.HydroBEMWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = ["E741"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["hydrobem"]
+known-local-folder = ["meshes", "problems", "bodies", "regression_problems"]
