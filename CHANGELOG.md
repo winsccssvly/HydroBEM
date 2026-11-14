@@ -2,20 +2,9 @@
 
 The user-visible changes of each version. The methods are described in `docs/theory/`.
 
-## Unreleased
-
-Rust API version 57.
-
-- A warning of the model rules, code 10 (`Warning::MeshFacing`): wetted elements that lie on each
-  other with opposite normals, of two bodies in contact each meshed across the contact or of one
-  surface meshed on both sides with almost no thickness, per pair of bodies with their number,
-  area and first element. Such meshes give radiation coefficients that break the reciprocity
-  without any other sign; leave the contact out of the wetted surfaces (`ranges`)
-  ([theory §14](docs/theory/14-geometry-preprocessing.md#mesh-quality)).
-
 ## 0.3.0 (2026-11-13)
 
-Rust API version 56, C ABI version 8, model record version 13, results file format 5, geometry
+Rust API version 57, C ABI version 8, model record version 13, results file format 5, geometry
 file (.hbg) version 3 (files of the earlier versions are refused). The engine is built for x86-64
 with AVX2 and FMA. The C runtime is linked dynamically: the extension module uses the
 `vcruntime140.dll` that Python for Windows installs, and the C ABI DLL needs the Visual C++
@@ -772,6 +761,13 @@ versions are refused.
   low-order panels: free, non-manifold and inconsistently oriented sides and open waterline ends,
   in `mesh_quality()`, `mesh.quality()` and the warnings of the rules; patches may meet a side of
   several smaller ones.
+- **Wetted elements that lie on each other.** A warning of the model rules, code 10
+  (`Warning::MeshFacing`): wetted elements that lie on each other with opposite normals, of two
+  bodies in contact each meshed across the contact or of one surface meshed on both sides with
+  almost no thickness, per pair of bodies with their number, area and first element. Such meshes
+  give radiation coefficients that break the reciprocity without any other sign; leave the contact
+  out of the wetted surfaces (`ranges`)
+  ([theory §14](docs/theory/14-geometry-preprocessing.md#mesh-quality)).
 - **One argument order and unambiguous element types.** The
   tessellations take `(nu, nv, expand)` and the mode displacements `(points, bodies, records)` in
   Rust and C as in Python; `ElementType::ComplexF32`, `ComplexF64` and the `QuantityData` variants

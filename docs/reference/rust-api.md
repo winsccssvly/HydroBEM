@@ -10,7 +10,7 @@ every type and method is the crate documentation:
 cargo doc -p hydrobem_core --no-deps --open
 ```
 
-The API carries a version number (`BuildInfo::api_version`, 56 for HydroBEM 0.3.0), raised with
+The API carries a version number (`BuildInfo::api_version`, 57 for HydroBEM 0.3.0), raised with
 every change of the public API (new result quantities included: the enums are exhaustive).
 
 ## Types
