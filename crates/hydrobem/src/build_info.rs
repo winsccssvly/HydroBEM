@@ -4,7 +4,7 @@
 use std::sync::OnceLock;
 
 /// The version of the engine's interface, recorded in the meta data of a results file.
-pub const API_VERSION: i32 = 56;
+pub const API_VERSION: i32 = 57;
 
 mod generated {
     include!(concat!(env!("OUT_DIR"), "/build_info_gen.rs"));

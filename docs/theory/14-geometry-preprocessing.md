@@ -272,3 +272,21 @@ must lie on another one.
 
 **Cost.** Proportional to the number of elements, through a grid of the median edge length (about
 60 µs per patch), once per check of the rules.
+
+**Facing elements.** Two bodies in contact, each meshed across the contact (a float sliding on a
+column, two hulls side by side), put the same surface into the integral equation twice, with
+opposite normals and no fluid between. The equation is then nearly singular. On a float whose bore
+lies on the column of a spar, the radiation coefficients broke the reciprocity
+$A_{ij} = A_{ji}$ by 2 % of the peak of $A$ and 27 % of that of $B$, and the diffraction force
+depended on the formulation (scattered or total) by up to 1.7 times its peak. With the contact
+left out of both wetted surfaces the asymmetry fell to $2 \times 10^{-4}$ **[C]**. The check takes the
+wetted elements of all bodies, placed and reflected (a patch: one quadrilateral per span of its
+discretization), and asks of every element whether its centroid lies on another element whose
+normal is within 26 degrees of opposite ($\mathbf{n}_1 \cdot \mathbf{n}_2 < -0.9$): within the outline of
+that element and within 0.02 of the larger diameter from its plane **[C]**. Two meshes
+of one circular surface with $N$ chords a circle lie apart by up to the sagitta, $\pi/4N$ of a
+chord (0.011 at $N = 72$, 0.020 at 40), while a thin solid part lies above it (a plate 0.1 m
+thick under elements of 1 to 1.6 m: 0.06 to 0.1). Elements found on another body, and those of
+one body on itself (a surface meshed on both sides with almost no thickness), are reported per
+pair of bodies with their number, area and first element. A grid of the median diameter makes the
+search proportional to the number of elements.

@@ -271,10 +271,12 @@ pub enum Warning {
     /// a hook of the environment that changes the numbers is set (HB_DIAG_DOUBLE,
     /// HB_VALIDATE_<name>, HB_WATERLINE_CENTROID; internal studies only)
     EnvironmentHook = 9,
+    /// wetted elements of one body or of two lie on each other with opposite normals
+    MeshFacing = 10,
 }
 
 impl Warning {
-    const ALL: [Warning; 9] = [
+    const ALL: [Warning; 10] = [
         Warning::PressureDriftPressureSurfaces,
         Warning::CoarseMesh,
         Warning::MeshOrientation,
@@ -284,6 +286,7 @@ impl Warning {
         Warning::TankZeroFrequency,
         Warning::DisabledObject,
         Warning::EnvironmentHook,
+        Warning::MeshFacing,
     ];
     /// The code of the warning's diagnostics.
     pub fn code(self) -> i32 {

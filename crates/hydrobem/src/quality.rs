@@ -5,18 +5,18 @@
 //! body (or mesh) the volumes of the divergence theorem and the edges (of a patch mesh, the patch
 //! sides) of the closed surface (orientation, gaps, non-manifold edges, open waterline).
 
-use crate::codes::{QualityFlags, Warning};
+use crate::codes::{PanelRole, QualityFlags, Warning};
 use crate::mesh_desc::PatchKind;
 use crate::model_codes::Domain;
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::constants::{PI, fmt};
+use crate::constants::{PI, fmt, fmt_g};
 use crate::dispersion::dispersion_x0;
 use crate::error::{Diagnostic, Error, Result, at_body_element};
 use crate::geometry::{
-    COINCIDENCE_TOL, Placement, Reflection, Vec3, dot, max_of, min_of, norm, reflect_vertices, reflections, v3,
+    COINCIDENCE_TOL, Placement, Reflection, Vec3, cross, dot, max_of, min_of, norm, reflect_vertices, reflections, v3,
 };
-use crate::inspect::mesh_geometry;
+use crate::inspect::{Scope, inspect_tessellation, mesh_geometry};
 use crate::mesh::{Mesh, patch_eval, record_eval};
 use crate::problem::{Problem, Role, body_label};
 
@@ -31,6 +31,14 @@ pub const QUALITY_VOLUME_SPREAD: f64 = 1e-2;
 /// thousandth of an element lies far below the error of the discretization, a larger one is a
 /// defect of the geometry worth reporting.
 pub const QUALITY_EDGE_GAP: f64 = 1e-3;
+/// Two wetted elements with opposite normals lie on each other when the centroid of one lies on the
+/// other within this fraction of the larger element's diameter **[C]**: two meshes of one circular
+/// surface, of N chords a circle each, lie apart by up to the sagitta, pi/4N of a chord (0.011 at
+/// N = 72, 0.020 at 40), while a thin solid part (a heave plate 0.1 m thick under elements of 1 to
+/// 1.6 m, 0.06 to 0.1) lies above it.
+pub const QUALITY_FACING_GAP: f64 = 0.02;
+// the cosine of the angle between the normals above which two elements face each other
+const FACING_COS: f64 = -0.9;
 // the points of a patch side at which its neighbours are sought (the quarter points of halves,
 // none at an end or the middle, where the corners of the neighbours of a T-junction lie), and the
 // points of its outline for the search
@@ -702,7 +710,159 @@ pub fn mesh_quality(m: &Problem, body: i32) -> Result<MeshQuality> {
     Ok(rows)
 }
 
-/// The mesh warnings (Warning::CoarseMesh, MeshOrientation, MeshOpen, MeshVolume) of every body.
+// a wetted element placed, with its reflections (one quadrilateral; of a patch one per span)
+struct Face {
+    body: i32,
+    element: i32,
+    corners: [Vec3; 4],
+    centroid: Vec3,
+    normal: Vec3, // unit, into the fluid
+    diameter: f64,
+    area: f64,
+}
+
+// whether the point x lies on the face f within gap along its normal (and within the outline,
+// within 1e-6 of its diameter)
+fn lies_on(f: &Face, x: Vec3, gap: f64) -> bool {
+    if dot(x - f.centroid, f.normal).abs() > gap {
+        return false;
+    }
+    // the sense of the outline: its own normal, from the diagonals
+    let s = cross(f.corners[2] - f.corners[0], f.corners[3] - f.corners[1]);
+    let tol = COINCIDENCE_TOL * f.diameter;
+    let mut inside = true;
+    for k in 0..4 {
+        let a = f.corners[k];
+        let e = f.corners[(k + 1) % 4] - a;
+        let l = norm(e);
+        if l <= tol {
+            continue; // the repeated vertex of a triangle
+        }
+        inside &= dot(cross(e, x - a), s) / (l * norm(s)) >= -tol;
+    }
+    inside
+}
+
+/// The wetted elements of the bodies that lie on other wetted elements with opposite normals
+/// (Warning::MeshFacing): of two bodies (two hulls in contact, both meshed across the contact) or
+/// of one (a surface meshed on both sides with no thickness). A centroid lying on another element
+/// within QUALITY_FACING_GAP of the larger diameter, the normals within 26 degrees of opposite (cos -0.9)
+/// (theory §14).
+#[allow(clippy::needless_range_loop)] // index notation over the faces and the bodies
+fn facing_warnings(m: &Problem, out: &mut Vec<Diagnostic>) {
+    let Ok(t) = inspect_tessellation(m, Scope::All, &[PanelRole::Wetted], [0, 0], true) else {
+        return;
+    };
+    let mut faces: Vec<Face> = Vec::new();
+    for i in 0..t.len() {
+        let bi = t.body[i];
+        if bi < 0 || m.derived()[bi as usize].wavemaker {
+            continue; // a wavemaker lies on its own wall image
+        }
+        let c: [Vec3; 4] = std::array::from_fn(|k| Vec3(t.vertices[i][k]));
+        let mut n = v3(0.0, 0.0, 0.0);
+        for k in 0..4 {
+            n += Vec3(t.normals[i][k]);
+        }
+        let area = 0.5 * norm(cross(c[2] - c[0], c[3] - c[1]));
+        let mut diameter: f64 = 0.0;
+        for a in 0..4 {
+            for b in a + 1..4 {
+                diameter = diameter.max(norm(c[b] - c[a]));
+            }
+        }
+        if norm(n) == 0.0 || area <= 0.0 || diameter <= 0.0 {
+            continue;
+        }
+        let centroid = 0.25 * (c[0] + c[1] + c[2] + c[3]);
+        faces.push(Face {
+            body: bi,
+            element: t.element[i],
+            corners: c,
+            centroid,
+            normal: (1.0 / norm(n)) * n,
+            diameter,
+            area,
+        });
+    }
+    if faces.len() < 2 {
+        return;
+    }
+    // a grid of cells of the median diameter: every face in the cells of its box, widened by its gap
+    let mut d: Vec<f64> = faces.iter().map(|f| f.diameter).collect();
+    d.sort_by(|a, b| a.total_cmp(b));
+    let h = d[d.len() / 2];
+    let cell = |x: f64| (x / h).floor() as i64;
+    let mut grid: BTreeMap<[i64; 3], Vec<usize>> = BTreeMap::new();
+    for (j, f) in faces.iter().enumerate() {
+        let w = QUALITY_FACING_GAP * f.diameter;
+        let lo: [i64; 3] =
+            std::array::from_fn(|k| cell(f.corners.iter().map(|c| c[k]).fold(f64::INFINITY, f64::min) - w));
+        let hi: [i64; 3] =
+            std::array::from_fn(|k| cell(f.corners.iter().map(|c| c[k]).fold(f64::NEG_INFINITY, f64::max) + w));
+        for x in lo[0]..=hi[0] {
+            for y in lo[1]..=hi[1] {
+                for z in lo[2]..=hi[2] {
+                    grid.entry([x, y, z]).or_default().push(j);
+                }
+            }
+        }
+    }
+    // per pair of bodies (a <= b) and side: the faces of that side lying on the other's, their area
+    // and the first element
+    let nb = m.bodies.len();
+    let mut count = vec![vec![[0usize; 2]; nb]; nb];
+    let mut area = vec![vec![[0.0f64; 2]; nb]; nb];
+    let mut first = vec![vec![[i32::MAX; 2]; nb]; nb];
+    for f in &faces {
+        let x = f.centroid;
+        let key = [cell(x[0]), cell(x[1]), cell(x[2])];
+        let Some(near) = grid.get(&key) else { continue };
+        let hit = near.iter().map(|&j| &faces[j]).find(|g| {
+            !std::ptr::eq(*g, f)
+                && dot(f.normal, g.normal) < FACING_COS
+                && lies_on(g, x, QUALITY_FACING_GAP * max_of(f.diameter, g.diameter))
+        });
+        if let Some(g) = hit {
+            let (a, b) = (f.body.min(g.body) as usize, f.body.max(g.body) as usize);
+            let side = usize::from(f.body as usize != a);
+            count[a][b][side] += 1;
+            area[a][b][side] += f.area;
+            first[a][b][side] = first[a][b][side].min(f.element);
+        }
+    }
+    for a in 0..nb {
+        for b in a..nb {
+            let [na, nbb] = count[a][b];
+            if na + nbb == 0 {
+                continue;
+            }
+            let la = body_label(&m.bodies[a]);
+            let gap = fmt_g(QUALITY_FACING_GAP, 3);
+            let message = if a == b {
+                format!(
+                    "{la}: {na} wetted elements ({} m^2, the first element {}) lie on other wetted elements of the body with opposite normals, closer than {gap} of the element diameter: a surface meshed on both of its sides with almost no thickness between them",
+                    fmt_g(area[a][b][0], 4),
+                    first[a][b][0]
+                )
+            } else {
+                let lb = body_label(&m.bodies[b]);
+                let fa = if na > 0 { format!(", the first element {}", first[a][b][0]) } else { String::new() };
+                let fb = if nbb > 0 { format!(", the first element {}", first[a][b][1]) } else { String::new() };
+                format!(
+                    "{la} and {lb}: {na} wetted elements of {la} ({} m^2{fa}) and {nbb} of {lb} ({} m^2{fb}) lie on each other with opposite normals, closer than {gap} of the element diameter: no fluid lies between them that the mesh resolves, yet both are wetted surface (where the bodies touch, leave those elements out of the wetted surfaces: the body item ranges)",
+                    fmt_g(area[a][b][0], 4),
+                    fmt_g(area[a][b][1], 4),
+                )
+            };
+            let (body, element) = if na > 0 { (a as i32, first[a][b][0]) } else { (b as i32, first[a][b][1]) };
+            out.push(Diagnostic::warning_at(Warning::MeshFacing, at_body_element(body, element), message));
+        }
+    }
+}
+
+/// The mesh warnings (Warning::CoarseMesh, MeshOrientation, MeshOpen, MeshVolume of every body;
+/// MeshFacing of the bodies together).
 pub fn quality_warnings(m: &Problem, out: &mut Vec<Diagnostic>) {
     for bi in 0..m.bodies.len() as i32 {
         if m.derived()[bi as usize].wavemaker {
@@ -808,4 +968,5 @@ pub fn quality_warnings(m: &Problem, out: &mut Vec<Diagnostic>) {
             );
         }
     }
+    facing_warnings(m, out);
 }

@@ -2,6 +2,17 @@
 
 The user-visible changes of each version. The methods are described in `docs/theory/`.
 
+## Unreleased
+
+Rust API version 57.
+
+- A warning of the model rules, code 10 (`Warning::MeshFacing`): wetted elements that lie on each
+  other with opposite normals, of two bodies in contact each meshed across the contact or of one
+  surface meshed on both sides with almost no thickness, per pair of bodies with their number,
+  area and first element. Such meshes give radiation coefficients that break the reciprocity
+  without any other sign; leave the contact out of the wetted surfaces (`ranges`)
+  ([theory §14](docs/theory/14-geometry-preprocessing.md#mesh-quality)).
+
 ## 0.3.0 (2026-11-13)
 
 Rust API version 56, C ABI version 8, model record version 13, results file format 5, geometry

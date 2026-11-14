@@ -242,6 +242,14 @@ A coupling acts only on the rows of the body it belongs to; give the opposite di
 coupling of the other body. The rules are in
 [reference/inputs-bodies §1.3](../reference/inputs-bodies.md#13-couplings-between-bodies).
 
+Bodies may touch, such as a float that slides on the column of a spar. No water lies where they
+touch, so neither wetted surface may cover the contact. Meshes made as closed bodies each cover
+it, and then the same surface counts twice with opposite normals. The results are wrong without
+any visible error: the radiation coefficients lose their symmetry. The model check warns of it
+(code 10). Leave the contact out of both bodies with `ranges`. Each body is then open where it
+touches the other, so expect the warnings of an open surface; give the masses (not `"displaced"`)
+and check the hydrostatics of each body.
+
 ## 7. A trimmed body
 
 A hull floating at an angle, or at a draft other than that of its mesh, needs a new waterline.

@@ -103,7 +103,8 @@ def test_errors_carry_the_field_point():
 def test_warnings_with_their_body():
     acv = acv_body(mass="displaced", center_of_gravity=[0.0, 0.0, -0.5],
                    radii_of_gyration=[[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-    m = model([{"name": "box", "mesh": MESH, "position": [12.0, 0.0, 0.0], "modes": []}, acv], [1.0], [0.0],
+    # the box 1 m from the end of the cushion vehicle (x = 10): not in contact (warning 10)
+    m = model([{"name": "box", "mesh": MESH, "position": [13.0, 0.0, 0.0], "modes": []}, acv], [1.0], [0.0],
               options={"motion": True, "drift_pressure_integration": True})  # fmt: skip
     rec = m.check()
     assert len(rec) == 1 and rec[0].location == hb.Location(body=1) and rec[0].code == 1

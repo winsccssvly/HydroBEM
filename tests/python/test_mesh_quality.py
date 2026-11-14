@@ -1,7 +1,7 @@
 """Mesh quality: hb.Model.mesh_quality per element (size, aspect, elements per shortest
 wavelength, flags) and per body (volumes, edge counts), and the mesh warnings of the
-rules (the warning codes: coarse mesh 2, mesh orientation 3, mesh open 4, mesh volume 5) with the
-body and element."""
+rules (the warning codes: coarse mesh 2, mesh orientation 3, mesh open 4, mesh volume 5, facing
+elements 10) with the body and element."""
 
 import math
 
@@ -11,7 +11,7 @@ import pytest
 import hydrobem as hb
 
 from bodies import flat, surface
-from meshes import box_panels, cylinder_panels
+from meshes import box_panels, cylinder_panels, face_panels, moonpool_panels
 from problems import add_mesh, analytic, model
 
 
@@ -162,3 +162,50 @@ def test_a_gap_in_a_mesh_of_its_own_names_no_record_of_the_hull():
     gap[1][np.isclose(gap[1][:, 0], 0.5), 0] += 0.01  # the second patch moved off the first
     found = [w for w in warnings_with(gap) if "not closed" in str(w)]
     assert len(found) == 1 and found[0].location.body == 0 and found[0].location.element is None
+
+
+def facing(bodies):
+    return [w for w in mesh_warnings(bodies) if w.code == 10]
+
+
+def test_two_bodies_in_contact():
+    # two boxes 2 x 2 x 1 side by side, their faces x = 0 on each other: 4 x 4 elements each
+    box = box_panels(1.0, 1.0, 1.0, n=(4, 4, 4))
+    pair = [{"name": "a", "mesh": surface(box), "position": [-1.0, 0.0, 0.0]},
+            {"name": "b", "mesh": surface(box), "position": [1.0, 0.0, 0.0]}]  # fmt: skip
+    (w,) = facing(pair)
+    assert "bodies/a and bodies/b: 16 wetted elements of bodies/a" in str(w) and "and 16 of bodies/b" in str(w)
+    assert w.location.body == 0 and w.location.element is not None
+    # 0.3 apart (0.42 of an element diameter): water between them, no warning
+    pair[0]["position"], pair[1]["position"] = [-1.15, 0.0, 0.0], [1.15, 0.0, 0.0]
+    assert facing(pair) == []
+
+
+def test_a_column_through_a_moonpool():
+    # the wall of the moonpool (radius 1, 8 x 4 elements a quadrant) on the column's side (8 x 2),
+    # the same chords: every element of both lies on the other, the areas equal (32 chords of radius 1)
+    pool = {"name": "pool", "mesh": surface(moonpool_panels(2.0, 1.0, 1.0, n=8), symmetry="xz_and_yz")}
+    column = {"name": "column", "mesh": surface(cylinder_panels(1.0, 1.0, n_phi=8, n_z=2), symmetry="xz_and_yz")}
+    (w,) = facing([pool, column])
+    area = f"{32 * 2 * math.sin(math.pi / 32):.4g}"
+    assert f"128 wetted elements of bodies/pool ({area} m^2" in str(w) and f"64 of bodies/column ({area} m^2" in str(w)
+
+
+def _plate(thickness):
+    # a submerged plate 2 x 2 at z = -2, closed (4 x 4 elements on each face, one row on the sides)
+    z0 = -2.0 - thickness
+    v = face_panels((-1, -1, z0), (2, 0, 0), (0, 2, 0), 4, 4, (0, 0, -1))
+    v += face_panels((-1, -1, -2.0), (2, 0, 0), (0, 2, 0), 4, 4, (0, 0, 1))
+    for o, du, n in (((-1, -1, z0), (2, 0, 0), (0, -1, 0)), ((-1, 1, z0), (2, 0, 0), (0, 1, 0)),
+                     ((-1, -1, z0), (0, 2, 0), (-1, 0, 0)), ((1, -1, z0), (0, 2, 0), (1, 0, 0))):  # fmt: skip
+        v += face_panels(o, du, (0, 0, thickness), 4, 1, n)
+    return np.array(v)
+
+
+def test_a_thin_plate_and_a_surface_of_no_thickness():
+    # 0.06 thick under elements of diameter 0.71 (0.085): a thin solid part, no warning
+    assert facing({"mesh": surface(_plate(0.06))}) == []
+    # the bottom of a box meshed twice, once turned up: 16 + 16 elements on each other
+    box = box_panels(1.0, 1.0, 1.0, n=(4, 4, 4))
+    (w,) = facing({"mesh": surface(np.concatenate([box, box[:16, ::-1]]))})
+    assert "bodies/body: 32 wetted elements" in str(w) and "almost no thickness" in str(w)
